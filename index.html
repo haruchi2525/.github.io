@@ -64,25 +64,54 @@
                 });
             },
             getApiData: function () {
-              let t = e.Deferred(),
-                s = this.$searchWord.val();
-              return (
-                this.resetItem(s),
-                // 直接楽天APIを叩かず、Cloudflare Workersへリクエストを送信
-                e.ajax({
-                  url: this.WORKER_URL,
-                  type: "GET",
-                  dataType: "json", // jsonpから標準のjsonに変更
-                  data: {
-                    keyword: s,
-                    page: this.page,
-                  },
-                  success: t.resolve,
-                  error: t.reject,
-                }),
-                t.promise()
-              );
-            },
+  let t = e.Deferred(),
+    s = this.$searchWord.val();
+  
+  console.log("【デバッグ】検索キーワード:", s); // ←追加
+
+  return (
+    this.resetItem(s),
+    e.ajax({
+      url: this.WORKER_URL,
+      type: "GET",
+      dataType: "json",
+      crossDomain: true,
+      data: {
+        keyword: s,
+        page: this.page,
+      },
+      success: function(response) {
+        console.log("【デバッグ】Workerから届いた生データ:", response); // ←追加
+        t.resolve(response);
+      },
+      error: function(xhr, status, error) {
+        console.error("【デバッグ】通信エラー:", error);
+        t.reject(xhr, status, error);
+      },
+    }),
+    t.promise()
+  );
+},
+            // getApiData: function () {
+            //   let t = e.Deferred(),
+            //     s = this.$searchWord.val();
+            //   return (
+            //     this.resetItem(s),
+            //     // 直接楽天APIを叩かず、Cloudflare Workersへリクエストを送信
+            //     e.ajax({
+            //       url: this.WORKER_URL,
+            //       type: "GET",
+            //       dataType: "json", // jsonpから標準のjsonに変更
+            //       data: {
+            //         keyword: s,
+            //         page: this.page,
+            //       },
+            //       success: t.resolve,
+            //       error: t.reject,
+            //     }),
+            //     t.promise()
+            //   );
+            // },
             resetItem: function (e) {
               this.previousSearchWord != e
                 ? (this.$itemList.children("li").remove(), (this.page = 1))
