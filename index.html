@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="format-detection" content="telephone=no" />
+    <title>08 | 1-jQuery</title>
+    <link rel="stylesheet" href="../../00-tools/css/reset.css" />
+    <link rel="stylesheet" href="../../00-tools/css/base.css" />
+    <link rel="stylesheet" href="css/style.css" />
+    <!-- <script type="text/javascript" src="js/jquery.js" defer></script> -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="container">
+        <div class="header">
+          <p class="header__title">Search Books!</p>
+        </div>
+        <div class="search">
+          <div class="search__text">
+            <input
+              type="text"
+              id="js-search-word"
+              class="search__text__input"
+              value=""
+              placeholder="検索する"
+            />
+          </div>
+          <button id="js-search-button" class="search__btn">検索する</button>
+        </div>
+        <ul class="lists"></ul>
+      </div>
+    </div>
+    <script>
+
+      !(function (e, t) {
+        (t.app = t.app || {}),
+          (app = {
+            $searchWord: e("#js-search-word"),
+            $searchButton: e("#js-search-button"),
+            $itemList: e(".lists"),
+            previousSearchWord: void 0,
+            apiData: void 0,
+            page: 1,
+            HIT_ITEM_LEN: 20,
+            WORKER_URL: "https://frosty-butterfly-9bac.3939mitchy.workers.dev/",
+            init: function () {
+              this.$searchButton.on("click", this.runAsDefer.bind(this));
+            },
+            runAsDefer: function () {
+              let e = this;
+              e.getApiData()
+                .done(function (t) {
+                  e.checkToExist(t);
+                  let s = e.createTemplate(t);
+                  e.addTemplate(s);
+                })
+                .fail(function () {
+                  console.error("通信エラーが発生しました");
+                });
+            },
+            getApiData: function () {
+              let t = e.Deferred(),
+                s = this.$searchWord.val();
+              return (
+                this.resetItem(s),
+                // 直接楽天APIを叩かず、Cloudflare Workersへリクエストを送信
+                e.ajax({
+                  url: this.WORKER_URL,
+                  type: "GET",
+                  dataType: "json", // jsonpから標準のjsonに変更
+                  data: {
+                    keyword: s,
+                    page: this.page,
+                  },
+                  success: t.resolve,
+                  error: t.reject,
+                }),
+                t.promise()
+              );
+            },
+            resetItem: function (e) {
+              this.previousSearchWord != e
+                ? (this.$itemList.children("li").remove(), (this.page = 1))
+                : this.page++,
+                (this.previousSearchWord = e);
+            },
+            createTemplate: function (e) {
+              // データが存在しない場合の安全ガード
+              if (!e || !e.Items || !e.Items.length) return "";
+              for (let t = "", s = 0, i = e.Items.length; i > s; s++)
+                t +=
+                  '<li class="lists__item"><div class="lists__item__inner"><a href="' +
+                  e.Items[s].Item.itemUrl +
+                  '" class="lists__item__link" target="_blank"><img src="' +
+                  e.Items[s].Item.largeImageUrl +
+                  '" class="lists__item__img" alt="' +
+                  e.Items[s].Item.title +
+                  '"><p class="lists__item__detail">作品名：　' +
+                  e.Items[s].Item.title +
+                  '</p><p class="lists__item__detail">作者　：　' +
+                  e.Items[s].Item.author +
+                  '</p><p class="lists__item__detail">出版社：　' +
+                  e.Items[s].Item.publisherName +
+                  "</p></a></div></li>";
+              return t;
+            },
+            checkToExist: function (t) {
+              let s = e(".message"),
+                i =
+                  '<div class="message">検索結果が見つかりませんでした。<br>別のキーワードで検索して下さい。</div>';
+              // エラーやデータ不備の際のエラー回避処理を追加
+              let a = t && t.Items ? t.Items.length : 0;
+              a
+                ? e(document).find(s).remove()
+                : s.length || this.$itemList.before(i);
+            },
+            addTemplate: function (e) {
+              let t = this.$itemList;
+              t.prepend(e);
+            },
+          });
+      })(jQuery, window),
+        $(function () {
+          app.init();
+        });
+    </script>
+  </body>
+</html>
